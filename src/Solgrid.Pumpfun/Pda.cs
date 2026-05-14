@@ -1,0 +1,35 @@
+using System.Text;
+using Solnet.Programs;
+using Solnet.Wallet;
+
+namespace Solgrid.Pumpfun;
+
+public static class Pda
+{
+    private static PublicKey Find(IEnumerable<byte[]> seeds, PublicKey program)
+    {
+        PublicKey.TryFindProgramAddress(seeds.ToList(), program, out PublicKey addr, out _);
+        return addr;
+    }
+
+    private static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s);
+
+    public static PublicKey Global() => Find(new[] { Utf8("global") }, Addresses.Pump);
+
+    public static PublicKey BondingCurve(PublicKey mint) =>
+        Find(new[] { Utf8("bonding-curve"), mint.KeyBytes }, Addresses.Pump);
+
+    public static PublicKey AssociatedBondingCurve(PublicKey curve, PublicKey tokenProgram, PublicKey mint) =>
+        Find(new[] { curve.KeyBytes, tokenProgram.KeyBytes, mint.KeyBytes }, AssociatedTokenAccountProgram.ProgramIdKey);
+
+    public static PublicKey CreatorVault(PublicKey creator) =>
+        Find(new[] { Utf8("creator-vault"), creator.KeyBytes }, Addresses.Pump);
+
+    public static PublicKey EventAuthority(PublicKey program) =>
+        Find(new[] { Utf8("__event_authority") }, program);
+
+    // ---- generic ata, works for spl-token and token-2022 ----
+
+    public static PublicKey Ata(PublicKey owner, PublicKey tokenProgram, PublicKey mint) =>
+        Find(new[] { owner.KeyBytes, tokenProgram.KeyBytes, mint.KeyBytes }, AssociatedTokenAccountProgram.ProgramIdKey);
+}
