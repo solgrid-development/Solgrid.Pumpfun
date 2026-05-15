@@ -14,6 +14,8 @@ public static class Pda
 
     private static byte[] Utf8(string s) => Encoding.UTF8.GetBytes(s);
 
+    // ---- pump program ----
+
     public static PublicKey Global() => Find(new[] { Utf8("global") }, Addresses.Pump);
 
     public static PublicKey BondingCurve(PublicKey mint) =>
@@ -24,6 +26,19 @@ public static class Pda
 
     public static PublicKey CreatorVault(PublicKey creator) =>
         Find(new[] { Utf8("creator-vault"), creator.KeyBytes }, Addresses.Pump);
+
+    public static PublicKey SharingConfig(PublicKey mint) =>
+        Find(new[] { Utf8("sharing-config"), mint.KeyBytes }, Addresses.Pump);
+
+    public static PublicKey GlobalVolumeAccumulator(PublicKey program) =>
+        Find(new[] { Utf8("global_volume_accumulator") }, program);
+
+    public static PublicKey UserVolumeAccumulator(PublicKey program, PublicKey user) =>
+        Find(new[] { Utf8("user_volume_accumulator"), user.KeyBytes }, program);
+
+    // fee_config seed carries the fee program pubkey as a constant second seed
+    public static PublicKey FeeConfig(PublicKey program) =>
+        Find(new[] { Utf8("fee_config"), Addresses.PumpFees.KeyBytes }, program);
 
     public static PublicKey EventAuthority(PublicKey program) =>
         Find(new[] { Utf8("__event_authority") }, program);
