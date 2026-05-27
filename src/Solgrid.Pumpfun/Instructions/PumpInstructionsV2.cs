@@ -61,4 +61,10 @@ public static class PumpInstructionsV2
 
     public static TransactionInstruction Buy(PumpTradeAccounts a, ulong tokenAmountOut, ulong maxQuoteCost)
         => new() { Keys = V2Keys(a, true), ProgramId = Addresses.Pump, Data = Args(PumpInstructions.BuyV2Disc, tokenAmountOut, maxQuoteCost) };
+
+    public static TransactionInstruction Sell(PumpTradeAccounts a, ulong tokenAmountIn, ulong minQuoteOut)
+        => new() { Keys = V2Keys(a, false), ProgramId = Addresses.Pump, Data = Args(PumpInstructions.SellV2Disc, tokenAmountIn, minQuoteOut) };
+
+    public static TransactionInstruction BuyExactQuoteIn(PumpTradeAccounts a, ulong quoteIn, ulong minTokensOut)
+        => new() { Keys = V2Keys(a, true), ProgramId = Addresses.Pump, Data = Args(PumpInstructions.BuyExactQuoteInV2Disc, quoteIn, minTokensOut) };
 }

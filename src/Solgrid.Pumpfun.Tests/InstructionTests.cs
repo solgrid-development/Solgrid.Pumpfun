@@ -41,6 +41,34 @@ public class InstructionTests
         Assert.Equal(999UL, BitConverter.ToUInt64(ix.Data, 8));
         Assert.Equal(14, ix.Keys.Count);
     }
+
+    [Fact]
+    public void BuyV2_HasQuoteAccounts_AndGlobalVolume()
+    {
+        var ix = PumpInstructionsV2.Buy(Accounts(), 10, 20);
+
+        // v2 list is v1 + quote mint side + sharing + accumulators
+        Assert.Equal(27, ix.Keys.Count);
+        Assert.Equal(184, ix.Data[0]);
+    }
+
+    [Fact]
+    public void SellV2_NoGlobalVolume()
+    {
+        var ix = PumpInstructionsV2.Sell(Accounts(), 10, 20);
+        Assert.Equal(26, ix.Keys.Count);
+        Assert.Equal(93, ix.Data[0]);
+    }
+
+    [Fact]
+    public void BuyExactQuoteInV2_SameAccountsAsBuy()
+    {
+        var a = Accounts();
+        Assert.Equal(
+            PumpInstructionsV2.Buy(a, 1, 2).Keys.Count,
+            PumpInstructionsV2.BuyExactQuoteIn(a, 1, 2).Keys.Count);
+        Assert.Equal(194, PumpInstructionsV2.BuyExactQuoteIn(a, 1, 2).Data[0]);
+    }
 }
 
 public class BondingMathTests
