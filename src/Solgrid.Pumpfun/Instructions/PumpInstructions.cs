@@ -53,8 +53,8 @@ public static class PumpInstructions
 
         var data = new byte[8 + 8 + 8 + 1];
         BuyDisc.CopyTo(data, 0);
-        Write.U64(data, 8, tokenAmountOut);
-        Write.U64(data, 16, maxQuoteCost);
+        ByteRW.WriteU64(data, 8, tokenAmountOut);
+        ByteRW.WriteU64(data, 16, maxQuoteCost);
         data[24] = (byte)(trackVolume ? 1 : 0);
 
         return new TransactionInstruction { Keys = keys, ProgramId = Addresses.Pump, Data = data };
@@ -86,20 +86,11 @@ public static class PumpInstructions
 
         var data = new byte[24];
         SellDisc.CopyTo(data, 0);
-        Write.U64(data, 8, tokenAmountIn);
-        Write.U64(data, 16, minQuoteOut);
+        ByteRW.WriteU64(data, 8, tokenAmountIn);
+        ByteRW.WriteU64(data, 16, minQuoteOut);
 
         return new TransactionInstruction { Keys = keys, ProgramId = Addresses.Pump, Data = data };
     }
 
-    internal static void WriteU64Public(byte[] dst, int offset, ulong value) => Write.U64(dst, offset, value);
-}
-
-internal static class Write
-{
-    public static void U64(byte[] dst, int offset, ulong value)
-    {
-        for (int i = 0; i < 8; i++)
-            dst[offset + i] = (byte)(value >> (8 * i));
-    }
+    internal static void WriteU64Public(byte[] dst, int offset, ulong value) => ByteRW.WriteU64(dst, offset, value);
 }
