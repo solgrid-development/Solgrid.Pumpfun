@@ -23,16 +23,16 @@ public class BondingCurve
         int o = 8;
         return new BondingCurve
         {
-            VirtualTokenReserves = ByteRW.U64(data, ref o),
-            VirtualQuoteReserves = ByteRW.U64(data, ref o),
-            RealTokenReserves = ByteRW.U64(data, ref o),
-            RealQuoteReserves = ByteRW.U64(data, ref o),
-            TokenTotalSupply = ByteRW.U64(data, ref o),
-            Complete = ByteRW.Bool(data, ref o),
-            Creator = ByteRW.Key(data, ref o),
-            IsMayhemMode = ByteRW.Bool(data, ref o),
-            IsCashbackCoin = ByteRW.Bool(data, ref o),
-            QuoteMint = ByteRW.Key(data, ref o),
+            VirtualTokenReserves = Read.U64(data, ref o),
+            VirtualQuoteReserves = Read.U64(data, ref o),
+            RealTokenReserves = Read.U64(data, ref o),
+            RealQuoteReserves = Read.U64(data, ref o),
+            TokenTotalSupply = Read.U64(data, ref o),
+            Complete = Read.Bool(data, ref o),
+            Creator = Read.Key(data, ref o),
+            IsMayhemMode = Read.Bool(data, ref o),
+            IsCashbackCoin = Read.Bool(data, ref o),
+            QuoteMint = Read.Key(data, ref o),
         };
     }
 }
@@ -51,31 +51,31 @@ public class PumpGlobal
             return null;
 
         int o = 8;
-        ByteRW.Bool(data, ref o);              // initialized
-        ByteRW.Key(data, ref o);               // authority
-        var feeRecipient = ByteRW.Key(data, ref o);
-        ByteRW.U64(data, ref o);               // initial_virtual_token_reserves
-        ByteRW.U64(data, ref o);               // initial_virtual_sol_reserves
-        ByteRW.U64(data, ref o);               // initial_real_token_reserves
-        ByteRW.U64(data, ref o);               // token_total_supply
-        var feeBps = ByteRW.U64(data, ref o);
-        ByteRW.Key(data, ref o);               // withdraw_authority
-        ByteRW.Bool(data, ref o);              // enable_migrate
-        ByteRW.U64(data, ref o);               // pool_migration_fee
-        var creatorFeeBps = ByteRW.U64(data, ref o);
-        ByteRW.Keys(data, ref o, 7);           // fee_recipients
-        ByteRW.Key(data, ref o);               // set_creator_authority
-        ByteRW.Key(data, ref o);               // admin_set_creator_authority
-        ByteRW.Bool(data, ref o);              // create_v2_enabled
-        ByteRW.Key(data, ref o);               // whitelist_pda
-        ByteRW.Key(data, ref o);               // reserved_fee_recipient
-        ByteRW.Bool(data, ref o);              // mayhem_mode_enabled
-        ByteRW.Keys(data, ref o, 7);           // reserved_fee_recipients
-        ByteRW.Bool(data, ref o);              // is_cashback_enabled
-        ByteRW.Keys(data, ref o, 8);           // buyback_fee_recipients
-        ByteRW.U64(data, ref o);               // buyback_basis_points
-        ByteRW.U64(data, ref o);               // initial_virtual_quote_reserves
-        var quoteMints = ByteRW.Keys(data, ref o, 1);
+        Read.Bool(data, ref o);              // initialized
+        Read.Key(data, ref o);               // authority
+        var feeRecipient = Read.Key(data, ref o);
+        Read.U64(data, ref o);               // initial_virtual_token_reserves
+        Read.U64(data, ref o);               // initial_virtual_sol_reserves
+        Read.U64(data, ref o);               // initial_real_token_reserves
+        Read.U64(data, ref o);               // token_total_supply
+        var feeBps = Read.U64(data, ref o);
+        Read.Key(data, ref o);               // withdraw_authority
+        Read.Bool(data, ref o);              // enable_migrate
+        Read.U64(data, ref o);               // pool_migration_fee
+        var creatorFeeBps = Read.U64(data, ref o);
+        Read.Keys(data, ref o, 7);           // fee_recipients
+        Read.Key(data, ref o);               // set_creator_authority
+        Read.Key(data, ref o);               // admin_set_creator_authority
+        Read.Bool(data, ref o);              // create_v2_enabled
+        Read.Key(data, ref o);               // whitelist_pda
+        Read.Key(data, ref o);               // reserved_fee_recipient
+        Read.Bool(data, ref o);              // mayhem_mode_enabled
+        Read.Keys(data, ref o, 7);           // reserved_fee_recipients
+        Read.Bool(data, ref o);              // is_cashback_enabled
+        Read.Keys(data, ref o, 8);           // buyback_fee_recipients
+        Read.U64(data, ref o);               // buyback_basis_points
+        Read.U64(data, ref o);               // initial_virtual_quote_reserves
+        var quoteMints = Read.Keys(data, ref o, 1);
 
         return new PumpGlobal
         {
@@ -84,5 +84,42 @@ public class PumpGlobal
             CreatorFeeBasisPoints = creatorFeeBps,
             WhitelistedQuoteMints = quoteMints,
         };
+    }
+}
+
+internal static class Read
+{
+    public static ulong U64(byte[] b, ref int o)
+    {
+        ulong v = 0;
+        for (int i = 7; i >= 0; i--)
+            v = (v << 8) | b[o + i];
+        o += 8;
+        return v;
+    }
+
+    public static long I128(byte[] b, ref int o)
+    {
+        // low qword is enough for reserves, high stays 0 in practice
+        var low = (long)U64(b, ref o);
+        o += 8;
+        return low;
+    }
+
+    public static bool Bool(byte[] b, ref int o) => b[o++] != 0;
+
+    public static PublicKey Key(byte[] b, ref int o)
+    {
+        var k = new PublicKey(b[o..(o + 32)]);
+        o += 32;
+        return k;
+    }
+
+    public static PublicKey[] Keys(byte[] b, ref int o, int count)
+    {
+        var arr = new PublicKey[count];
+        for (int i = 0; i < count; i++)
+            arr[i] = Key(b, ref o);
+        return arr;
     }
 }
