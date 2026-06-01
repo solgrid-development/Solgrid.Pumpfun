@@ -47,4 +47,19 @@ public static class Pda
 
     public static PublicKey Ata(PublicKey owner, PublicKey tokenProgram, PublicKey mint) =>
         Find(new[] { owner.KeyBytes, tokenProgram.KeyBytes, mint.KeyBytes }, AssociatedTokenAccountProgram.ProgramIdKey);
+
+    // ---- pumpswap ----
+
+    public static PublicKey AmmGlobalConfig() =>
+        Find(new[] { Utf8("global_config") }, Addresses.PumpAmm);
+
+    public static PublicKey AmmPool(ushort index, PublicKey creator, PublicKey baseMint, PublicKey quoteMint) =>
+        Find(new[] { Utf8("pool"), new[] { (byte)(index & 0xff), (byte)(index >> 8) }, creator.KeyBytes, baseMint.KeyBytes, quoteMint.KeyBytes }, Addresses.PumpAmm);
+
+    public static PublicKey AmmPoolLpMint(PublicKey pool) =>
+        Find(new[] { Utf8("pool_lp_mint"), pool.KeyBytes }, Addresses.PumpAmm);
+
+    // same seed string as the pump creator vault, but under the amm program
+    public static PublicKey AmmCoinCreatorVaultAuthority(PublicKey coinCreator) =>
+        Find(new[] { Utf8("creator-vault"), coinCreator.KeyBytes }, Addresses.PumpAmm);
 }

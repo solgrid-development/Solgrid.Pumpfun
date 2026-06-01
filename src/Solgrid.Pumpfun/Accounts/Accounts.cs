@@ -87,6 +87,94 @@ public class PumpGlobal
     }
 }
 
+public class AmmPool
+{
+    public byte PoolBump { get; init; }
+    public ushort Index { get; init; }
+    public PublicKey Creator { get; init; } = new(new byte[32]);
+    public PublicKey BaseMint { get; init; } = new(new byte[32]);
+    public PublicKey QuoteMint { get; init; } = new(new byte[32]);
+    public PublicKey LpMint { get; init; } = new(new byte[32]);
+    public PublicKey PoolBaseTokenAccount { get; init; } = new(new byte[32]);
+    public PublicKey PoolQuoteTokenAccount { get; init; } = new(new byte[32]);
+    public ulong LpSupply { get; init; }
+    public PublicKey CoinCreator { get; init; } = new(new byte[32]);
+    public bool IsMayhemMode { get; init; }
+    public bool IsCashbackCoin { get; init; }
+    public long VirtualQuoteReserves { get; init; }
+
+    public static AmmPool? Deserialize(byte[] data)
+    {
+        if (data.Length < 8 + 1 + 2 + 32 * 7 + 8 + 2 + 16)
+            return null;
+
+        int o = 8;
+        var bump = data[o++];
+        var index = (ushort)(data[o] | (data[o + 1] << 8));
+        o += 2;
+        var creator = Read.Key(data, ref o);
+        var baseMint = Read.Key(data, ref o);
+        var quoteMint = Read.Key(data, ref o);
+        var lpMint = Read.Key(data, ref o);
+        var poolBase = Read.Key(data, ref o);
+        var poolQuote = Read.Key(data, ref o);
+        var lpSupply = Read.U64(data, ref o);
+        var coinCreator = Read.Key(data, ref o);
+        var mayhem = Read.Bool(data, ref o);
+        var cashback = Read.Bool(data, ref o);
+        var virtualQuote = Read.I128(data, ref o);
+
+        return new AmmPool
+        {
+            PoolBump = bump,
+            Index = index,
+            Creator = creator,
+            BaseMint = baseMint,
+            QuoteMint = quoteMint,
+            LpMint = lpMint,
+            PoolBaseTokenAccount = poolBase,
+            PoolQuoteTokenAccount = poolQuote,
+            LpSupply = lpSupply,
+            CoinCreator = coinCreator,
+            IsMayhemMode = mayhem,
+            IsCashbackCoin = cashback,
+            VirtualQuoteReserves = virtualQuote,
+        };
+    }
+}
+
+public class AmmGlobalConfig
+{
+    public PublicKey Admin { get; init; } = new(new byte[32]);
+    public ulong LpFeeBasisPoints { get; init; }
+    public ulong ProtocolFeeBasisPoints { get; init; }
+    public PublicKey[] ProtocolFeeRecipients { get; init; } = Array.Empty<PublicKey>();
+    public ulong CoinCreatorFeeBasisPoints { get; init; }
+
+    public static AmmGlobalConfig? Deserialize(byte[] data)
+    {
+        if (data.Length < 8 + 32 + 16 + 1 + 8 * 32 + 8)
+            return null;
+
+        int o = 8;
+        var admin = Read.Key(data, ref o);
+        var lp = Read.U64(data, ref o);
+        var protocol = Read.U64(data, ref o);
+        o += 1; // disable_flags
+        var recipients = Read.Keys(data, ref o, 8);
+        var coinCreator = Read.U64(data, ref o);
+
+        return new AmmGlobalConfig
+        {
+            Admin = admin,
+            LpFeeBasisPoints = lp,
+            ProtocolFeeBasisPoints = protocol,
+            ProtocolFeeRecipients = recipients,
+            CoinCreatorFeeBasisPoints = coinCreator,
+        };
+    }
+}
+
 internal static class Read
 {
     public static ulong U64(byte[] b, ref int o)

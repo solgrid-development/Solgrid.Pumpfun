@@ -35,6 +35,15 @@ public class PdaTests
         var c2 = new PublicKey(Enumerable.Repeat((byte)1, 32).ToArray());
         Assert.NotEqual(Pda.CreatorVault(c1).Key, Pda.CreatorVault(c2).Key);
     }
+
+    [Fact]
+    public void AmmPool_IndexChangesAddress()
+    {
+        var creator = new PublicKey(new byte[32]);
+        var baseM = new PublicKey(Enumerable.Repeat((byte)2, 32).ToArray());
+        var quote = new PublicKey(Enumerable.Repeat((byte)3, 32).ToArray());
+        Assert.NotEqual(Pda.AmmPool(0, creator, baseM, quote).Key, Pda.AmmPool(1, creator, baseM, quote).Key);
+    }
 }
 
 public class AccountsTests
@@ -80,5 +89,31 @@ public class AccountsTests
     public void BondingCurve_ShortData_Null()
     {
         Assert.Null(BondingCurve.Deserialize(new byte[20]));
+    }
+
+    [Fact]
+    public void AmmPool_Layout()
+    {
+        var data = new List<byte>();
+        data.AddRange(new byte[8]);
+        data.Add(254);                          // bump
+        data.Add(7); data.Add(0);               // index u16 le
+        for (int i = 0; i < 7; i++) data.AddRange(Enumerable.Repeat((byte)(i + 1), 32));
+        data.AddRange(U64(42));                 // lp supply
+        data.AddRange(Enumerable.Repeat((byte)8, 32));  // coin creator
+        data.Add(1);                            // mayhem
+        data.Add(0);                            // cashback
+        data.AddRange(U64(777));                // i128 low
+        data.AddRange(new byte[8]);             // i128 high
+
+        var p = AmmPool.Deserialize(data.ToArray());
+
+        Assert.NotNull(p);
+        Assert.Equal(254, p.PoolBump);
+        Assert.Equal(7, p.Index);
+        Assert.Equal(42UL, p.LpSupply);
+        Assert.True(p.IsMayhemMode);
+        Assert.Equal(777, p.VirtualQuoteReserves);
+        Assert.Equal(new PublicKey(Enumerable.Repeat((byte)8, 32).ToArray()).Key, p.CoinCreator.Key);
     }
 }
