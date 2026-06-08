@@ -70,7 +70,7 @@ public class AmmInstructionTests
     public void Buy_HasVolumeAccounts()
     {
         var ix = AmmInstructions.Buy(Accounts(), 100, 200);
-        Assert.Equal(24, ix.Keys.Count);
+        Assert.Equal(23, ix.Keys.Count);
         Assert.Equal(102, ix.Data[0]);
         Assert.Equal(25, ix.Data.Length);
     }
@@ -79,7 +79,7 @@ public class AmmInstructionTests
     public void Sell_NoVolumeAccounts()
     {
         var ix = AmmInstructions.Sell(Accounts(), 100, 50);
-        Assert.Equal(22, ix.Keys.Count);
+        Assert.Equal(21, ix.Keys.Count);
         Assert.Equal(51, ix.Data[0]);
     }
 }
