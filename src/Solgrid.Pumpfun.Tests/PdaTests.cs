@@ -98,7 +98,7 @@ public class AccountsTests
         data.AddRange(new byte[8]);
         data.Add(254);                          // bump
         data.Add(7); data.Add(0);               // index u16 le
-        for (int i = 0; i < 7; i++) data.AddRange(Enumerable.Repeat((byte)(i + 1), 32));
+        for (int i = 0; i < 6; i++) data.AddRange(Enumerable.Repeat((byte)(i + 1), 32));
         data.AddRange(U64(42));                 // lp supply
         data.AddRange(Enumerable.Repeat((byte)8, 32));  // coin creator
         data.Add(1);                            // mayhem

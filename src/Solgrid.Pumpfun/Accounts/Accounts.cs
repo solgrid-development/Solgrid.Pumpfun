@@ -105,7 +105,7 @@ public class AmmPool
 
     public static AmmPool? Deserialize(byte[] data)
     {
-        if (data.Length < 8 + 1 + 2 + 32 * 7 + 8 + 2 + 16)
+        if (data.Length < 8 + 1 + 2 + 32 * 6 + 8 + 32 + 2 + 16)
             return null;
 
         int o = 8;
