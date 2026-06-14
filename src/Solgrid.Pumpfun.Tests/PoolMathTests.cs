@@ -45,6 +45,14 @@ public class PoolMathTests
         Assert.True(quoteOut > 0);
         Assert.InRange(baseBack, baseIn - baseIn / 100, baseIn);
     }
+
+    [Fact]
+    public void EffectiveReserves_AddsVirtual()
+    {
+        Assert.Equal(60UL, PoolMath.EffectiveQuoteReserves(50, 10));
+        Assert.Equal(50UL, PoolMath.EffectiveQuoteReserves(50, 0));
+        Assert.Equal(0UL, PoolMath.EffectiveQuoteReserves(5, -10));
+    }
 }
 
 public class AmmInstructionTests

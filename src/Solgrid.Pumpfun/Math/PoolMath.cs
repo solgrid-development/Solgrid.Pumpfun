@@ -6,8 +6,15 @@ namespace Solgrid.Pumpfun.Math;
 // fees are charged on top of the cp quote for buys and deducted for sells:
 //   buy:  user pays cp + lp + protocol + coin creator
 //   sell: user gets cp - lp - protocol - coin creator
+// quote side uses effective reserves = vault balance + Pool.virtual_quote_reserves
 public static class PoolMath
 {
+    public static ulong EffectiveQuoteReserves(ulong vaultBalance, long virtualQuoteReserves)
+    {
+        var eff = (BigInteger)vaultBalance + virtualQuoteReserves;
+        return eff < 0 ? 0 : (ulong)eff;
+    }
+
     // base out wanted -> total quote the user must pay
     public static ulong BuyQuoteIn(ulong baseR, ulong quoteR, ulong baseOut, ulong lpBps, ulong protocolBps, ulong creatorBps)
     {
