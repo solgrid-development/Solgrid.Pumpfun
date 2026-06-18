@@ -37,7 +37,7 @@ public record TradeEvent(
     ulong VirtualQuoteReserves,
     ulong RealQuoteReserves) : PumpEvent
 {
-    public static readonly byte[] Disc = DiscOf("Trade");
+    public static readonly byte[] Disc = EventDecoder.EventDisc("Trade");
 
     public static TradeEvent? TryParse(byte[] raw)
     {
@@ -115,8 +115,52 @@ public record TradeEvent(
             rsol, rtok, feeRecipient, feeBps, fee, creator, creatorBps, creatorFee,
             track, vol, ixName, mayhem, cashback, buyback, quoteMint, quoteAmount, vqr, rqr);
     }
+}
 
-    private static byte[] DiscOf(string name)
+public record MigrationEvent(
+    PublicKey User,
+    PublicKey Mint,
+    ulong MintAmount,
+    ulong SolAmount,
+    ulong PoolMigrationFee,
+    PublicKey BondingCurve,
+    long Timestamp,
+    PublicKey Pool,
+    PublicKey QuoteMint) : PumpEvent
+{
+    public static readonly byte[] Disc = EventDecoder.EventDisc("CompletePumpAmmMigration");
+
+    public static MigrationEvent? TryParse(byte[] raw)
+    {
+        if (raw.Length < 8 + 32 * 5 + 8 * 4)
+            return null;
+        for (int i = 0; i < 8; i++)
+            if (raw[i] != Disc[i])
+                return null;
+
+        int o = 8;
+        var user = R.Key(raw, ref o);
+        var mint = R.Key(raw, ref o);
+        var mintAmount = R.U64(raw, ref o);
+        var solAmount = R.U64(raw, ref o);
+        var migrationFee = R.U64(raw, ref o);
+        var curve = R.Key(raw, ref o);
+        var ts = (long)R.U64(raw, ref o);
+        var pool = R.Key(raw, ref o);
+        var quoteMint = R.Key(raw, ref o);
+
+        return new MigrationEvent(user, mint, mintAmount, solAmount, migrationFee, curve, ts, pool, quoteMint);
+    }
+}
+
+public static class EventDecoder
+{
+    public static PumpEvent? Decode(byte[] raw)
+    {
+        return (PumpEvent?)TradeEvent.TryParse(raw) ?? MigrationEvent.TryParse(raw);
+    }
+
+    internal static byte[] EventDisc(string name)
         => SHA256.HashData(Encoding.UTF8.GetBytes("event:" + name))[..8];
 }
 
