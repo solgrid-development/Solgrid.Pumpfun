@@ -155,9 +155,25 @@ public record MigrationEvent(
 
 public static class EventDecoder
 {
+    private const string Prefix = "Program data: ";
+
     public static PumpEvent? Decode(byte[] raw)
     {
         return (PumpEvent?)TradeEvent.TryParse(raw) ?? MigrationEvent.TryParse(raw);
+    }
+
+    public static PumpEvent? DecodeLogLine(string line)
+    {
+        if (line == null || !line.StartsWith(Prefix))
+            return null;
+        try
+        {
+            return Decode(Convert.FromBase64String(line[Prefix.Length..].Trim()));
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     internal static byte[] EventDisc(string name)
