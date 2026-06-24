@@ -114,4 +114,12 @@ public class EventTests
         Assert.IsType<MigrationEvent>(EventDecoder.Decode(mig.ToArray()));
         Assert.Null(EventDecoder.Decode(new byte[200]));
     }
+
+    [Fact]
+    public void Decoder_LogLine()
+    {
+        var line = "Program data: " + Convert.ToBase64String(LegacyTrade(true));
+        Assert.NotNull(EventDecoder.DecodeLogLine(line));
+        Assert.Null(EventDecoder.DecodeLogLine("Program log: Instruction: Buy"));
+    }
 }
