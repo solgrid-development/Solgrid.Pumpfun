@@ -5,6 +5,7 @@ using Solnet.Rpc.Models;
 using Solnet.Rpc.Types;
 using Solnet.Wallet;
 using Solgrid.Pumpfun.Accounts;
+using Solgrid.Pumpfun.Math;
 
 namespace Solgrid.Pumpfun.Client;
 
@@ -16,6 +17,22 @@ public class CoinState
     public bool Migrated => Curve?.Complete == true;
     public PublicKey QuoteMint { get; init; } = new(new byte[32]);
     public bool NeedsV2 => QuoteMint.Key != new PublicKey(new byte[32]).Key;
+}
+
+public static class Quotes
+{
+    // pure quote helpers, kept separate so tests do not need an rpc
+    public static ulong BuyTokensOnCurve(BondingCurve curve, ulong feeBps, ulong quoteIn)
+        => BondingMath.QuoteBuyTokens(curve.VirtualQuoteReserves, curve.VirtualTokenReserves, quoteIn, feeBps);
+
+    public static ulong SellQuoteOnCurve(BondingCurve curve, ulong feeBps, ulong tokensIn)
+        => BondingMath.QuoteSellQuote(curve.VirtualQuoteReserves, curve.VirtualTokenReserves, tokensIn, feeBps);
+
+    public static ulong BuyTokensOnPool(ulong baseR, ulong quoteR, AmmGlobalConfig cfg, ulong quoteIn)
+        => PoolMath.BuyBaseOut(baseR, quoteR, quoteIn, cfg.LpFeeBasisPoints, cfg.ProtocolFeeBasisPoints, cfg.CoinCreatorFeeBasisPoints);
+
+    public static ulong SellQuoteOnPool(ulong baseR, ulong quoteR, AmmGlobalConfig cfg, ulong baseIn)
+        => PoolMath.SellQuoteOut(baseR, quoteR, baseIn, cfg.LpFeeBasisPoints, cfg.ProtocolFeeBasisPoints, cfg.CoinCreatorFeeBasisPoints);
 }
 
 public partial class PumpClient
@@ -57,6 +74,55 @@ public partial class PumpClient
         if (curve == null)
             return null;
         return new CoinState { Mint = mintKey, Curve = curve, QuoteMint = curve.QuoteMint };
+    }
+
+    public async Task<ulong> QuoteBuyTokensAsync(CoinState state, ulong quoteIn)
+    {
+        if (!state.Migrated)
+        {
+            var g = await GlobalAsync();
+            return Quotes.BuyTokensOnCurve(state.Curve!, g?.FeeBasisPoints ?? 100, quoteIn);
+        }
+
+        var (baseR, quoteR) = await PoolReservesAsync(state.Pool!);
+        var cfg = await AmmConfigAsync();
+        if (cfg == null) return 0;
+        return Quotes.BuyTokensOnPool(baseR, quoteR, cfg, quoteIn);
+    }
+
+    public async Task<ulong> QuoteSellQuoteAsync(CoinState state, ulong tokensOrBaseIn)
+    {
+        if (!state.Migrated)
+        {
+            var g = await GlobalAsync();
+            return Quotes.SellQuoteOnCurve(state.Curve!, g?.FeeBasisPoints ?? 100, tokensOrBaseIn);
+        }
+
+        var (baseR, quoteR) = await PoolReservesAsync(state.Pool!);
+        var cfg = await AmmConfigAsync();
+        if (cfg == null) return 0;
+        return Quotes.SellQuoteOnPool(baseR, quoteR, cfg, tokensOrBaseIn);
+    }
+
+    public async Task<(ulong Base, ulong Quote)> PoolReservesAsync(AmmPool pool)
+    {
+        var baseAcc = await _rpc.GetAccountInfoAsync(pool.PoolBaseTokenAccount.Key, Commitment.Confirmed);
+        var quoteAcc = await _rpc.GetAccountInfoAsync(pool.PoolQuoteTokenAccount.Key, Commitment.Confirmed);
+        var baseR = TokenAmount(baseAcc);
+        var quoteR = PoolMath.EffectiveQuoteReserves(TokenAmount(quoteAcc), pool.VirtualQuoteReserves);
+        return (baseR, quoteR);
+    }
+
+    private static ulong TokenAmount(RequestResult<ResponseValue<AccountInfo>> res)
+    {
+        // spl token account: amount is u64 at offset 64
+        var raw = TryData(res);
+        if (raw == null || raw.Length < 72)
+            return 0;
+        ulong v = 0;
+        for (int i = 7; i >= 0; i--)
+            v = (v << 8) | raw[64 + i];
+        return v;
     }
 
     private static T? TryAccount<T>(RequestResult<ResponseValue<AccountInfo>> res, Func<byte[], T?> parse) where T : class
