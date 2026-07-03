@@ -73,7 +73,30 @@ public partial class PumpClient
         var curve = TryAccount(acc, BondingCurve.Deserialize);
         if (curve == null)
             return null;
-        return new CoinState { Mint = mintKey, Curve = curve, QuoteMint = curve.QuoteMint };
+
+        var state = new CoinState { Mint = mintKey, Curve = curve, QuoteMint = curve.QuoteMint };
+        if (!curve.Complete)
+            return state;
+
+        var pool = await FindPoolAsync(mintKey);
+        return new CoinState { Mint = mintKey, Curve = curve, Pool = pool, QuoteMint = pool?.QuoteMint ?? curve.QuoteMint };
+    }
+
+    // pool pda needs index+creator we do not have, so filter program accounts
+    // by base mint; happens once per migrated coin, cached by callers
+    public async Task<AmmPool?> FindPoolAsync(PublicKey baseMint)
+    {
+        var filters = new List<MemCmp> { new() { Offset = 43, Bytes = baseMint.Key } };
+        var res = await _rpc.GetProgramAccountsAsync(Addresses.PumpAmm.Key, Commitment.Confirmed, 178, filters);
+        if (!res.WasSuccessful || res.Result == null)
+            return null;
+        foreach (var acc in res.Result)
+        {
+            var pool = AmmPool.Deserialize(Convert.FromBase64String(acc.Account.Data[0]));
+            if (pool != null)
+                return pool;
+        }
+        return null;
     }
 
     public async Task<ulong> QuoteBuyTokensAsync(CoinState state, ulong quoteIn)
