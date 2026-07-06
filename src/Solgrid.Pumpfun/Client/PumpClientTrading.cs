@@ -74,6 +74,67 @@ public partial class PumpClient
         return await SendAsync(builder, $"buy {mint[..6]}");
     }
 
+    public async Task<(bool Ok, string? Error, string? Signature)> SellAsync(string mint, ulong baseIn, int slippageBps, ulong cuPrice, bool closeAta = false, ulong cuLimit = DefaultCuLimit)
+    {
+        if (Trader == null)
+            return (false, "no trader account", null);
+
+        var state = await GetCoinStateAsync(mint);
+        if (state?.Curve == null)
+            return (false, "coin not found", null);
+
+        var g = await GlobalAsync();
+        if (g == null)
+            return (false, "global not readable", null);
+
+        var builder = BaseBuilder(cuLimit, cuPrice);
+
+        if (!state.Migrated)
+        {
+            var minQuote = await QuoteSellQuoteAsync(state, baseIn);
+            minQuote = minQuote > minQuote * (ulong)slippageBps / 10000
+                ? minQuote - minQuote * (ulong)slippageBps / 10000
+                : 0;
+
+            var accounts = new PumpTradeAccounts(
+                state.Mint, state.QuoteMint, Pda.BondingCurve(state.Mint), state.Curve.Creator,
+                Trader.PublicKey, TokenProgram.ProgramIdKey, TokenProgram.ProgramIdKey,
+                g.FeeRecipient, g.FeeRecipient);
+
+            var ix = state.NeedsV2
+                ? PumpInstructionsV2.Sell(accounts, baseIn, minQuote)
+                : PumpInstructions.Sell(accounts, baseIn, minQuote);
+            builder.AddInstruction(ix);
+
+            if (closeAta)
+                builder.AddInstruction(TokenProgram.CloseAccount(
+                    Pda.Ata(Trader.PublicKey, TokenProgram.ProgramIdKey, state.Mint),
+                    Trader.PublicKey, Trader.PublicKey, TokenProgram.ProgramIdKey));
+        }
+        else
+        {
+            if (state.Pool == null)
+                return (false, "migrated but pool not found", null);
+
+            var reserves = await PoolReservesAsync(state.Pool);
+            var cfg = await AmmConfigAsync();
+            if (cfg == null)
+                return (false, "amm config not readable", null);
+
+            var quoteOut = Quotes.SellQuoteOnPool(reserves.Base, reserves.Quote, cfg, baseIn);
+            var minOut = quoteOut > quoteOut * (ulong)slippageBps / 10000
+                ? quoteOut - quoteOut * (ulong)slippageBps / 10000
+                : 0;
+
+            var swap = new AmmSwapAccounts(state.Pool, Trader.PublicKey, Pda.AmmGlobalConfig(),
+                cfg.ProtocolFeeRecipients.Length > 0 ? cfg.ProtocolFeeRecipients[0] : new PublicKey(new byte[32]),
+                TokenProgram.ProgramIdKey, TokenProgram.ProgramIdKey);
+            builder.AddInstruction(AmmInstructions.Sell(swap, baseIn, minOut));
+        }
+
+        return await SendAsync(builder, $"sell {mint[..6]}");
+    }
+
     private TransactionBuilder BaseBuilder(ulong cuLimit, ulong cuPrice)
         => new TransactionBuilder()
             .SetFeePayer(Trader!)
