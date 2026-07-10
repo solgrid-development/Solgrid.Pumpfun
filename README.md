@@ -1,7 +1,69 @@
 # Solgrid.Pumpfun
 
-C# SDK for pump.fun on Solana. Bonding curve v1/v2 instructions, PumpSwap
-swaps, event decoders, curve and pool math, plus a client that routes trades.
+C# SDK for pump.fun on Solana. Bonding-curve instructions (v1 and v2),
+PumpSwap swap instructions, account types, event decoders, curve and pool
+math, plus a client that routes a trade to wherever the coin currently
+lives. Built from the official IDLs in pump-fun/pump-public-docs.
 
-WIP - built from the official IDLs in pump-fun/pump-public-docs. Proper
-readme comes when the client is usable.
+Solnet.Pumpfun is dead and predates creator fees, usdc-paired coins and
+PumpSwap. This is the current program, in C#.
+
+## Install
+
+    dotnet add package Solgrid.Pumpfun   # once published
+    # or reference the project, net8.0
+
+## Trade a coin
+
+```csharp
+var rpc = ClientFactory.GetClient("https://your.rpc");
+var client = new PumpClient(rpc, Account.FromSecretKey(File.ReadAllText("key.txt").Trim()));
+
+var state = await client.GetCoinStateAsync(mint);
+var tokens = await client.QuoteBuyTokensAsync(state, 100_000_000); // 0.1 SOL
+
+var (ok, err, sig) = await client.BuyAsync(mint, 100_000_000, slippageBps: 500, cuPrice: 500_000);
+```
+
+`BuyAsync` picks v1 or v2 by the coin's quote mint and routes migrated coins
+through PumpSwap. `SellAsync` does the same in reverse and can close your
+ATA on a full exit.
+
+## Watch the whole tape
+
+```csharp
+var ws = ClientFactory.GetStreamingClient("wss://your.rpc");
+var stream = new TradeStream(ws);
+stream.Trade += t => Console.WriteLine($"{t.User} {(t.IsBuy ? "bought" : "sold")} {t.Mint}");
+stream.Migration += m => Console.WriteLine($"{m.Mint} graduated to pool {m.Pool}");
+await stream.StartAsync();
+```
+
+## Build your own instructions
+
+All builders are pure: `PumpInstructions.Buy/Sell`, `PumpInstructionsV2.*`,
+`AmmInstructions.Buy/Sell`. Account lists follow the current IDL exactly —
+including creator vaults, volume accumulators and the fee-program CPI that
+the old SDKs omit and that make old transactions fail today.
+
+Math lives in `BondingMath` (curve, 1% protocol fee) and `PoolMath`
+(pAMM constant product with lp/protocol/creator fees on effective quote
+reserves).
+
+## Notes
+
+- fee recipient and fee bps are read from the on-chain Global account, not
+  hardcoded; they rotate
+- pool reserves come from the pool vault accounts plus
+  `Pool.virtual_quote_reserves` (effective reserves, per the docs)
+- keys never leave your process; signing is local, sending goes through
+  whatever rpc you passed in
+
+## Build & test
+
+    dotnet build src/Solgrid.Pumpfun.sln
+    dotnet test src/Solgrid.Pumpfun.sln
+
+## License
+
+MIT
