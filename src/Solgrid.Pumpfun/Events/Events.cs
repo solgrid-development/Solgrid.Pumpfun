@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using Solnet.Wallet;
 
@@ -37,7 +36,9 @@ public record TradeEvent(
     ulong VirtualQuoteReserves,
     ulong RealQuoteReserves) : PumpEvent
 {
-    public static readonly byte[] Disc = EventDecoder.EventDisc("Trade");
+    // discriminators are explicit in the official IDL, anchor's
+    // sha256("event:X") formula does NOT match what the program emits
+    public static readonly byte[] Disc = { 189, 219, 127, 211, 78, 230, 97, 238 };
 
     public static TradeEvent? TryParse(byte[] raw)
     {
@@ -128,7 +129,7 @@ public record MigrationEvent(
     PublicKey Pool,
     PublicKey QuoteMint) : PumpEvent
 {
-    public static readonly byte[] Disc = EventDecoder.EventDisc("CompletePumpAmmMigration");
+    public static readonly byte[] Disc = { 189, 233, 93, 185, 92, 148, 234, 148 };
 
     public static MigrationEvent? TryParse(byte[] raw)
     {
@@ -153,13 +154,52 @@ public record MigrationEvent(
     }
 }
 
+// pumpswap swap fills. same wire shape for buy and sell up to the
+// pool/user keys, only the quote field name differs
+public record AmmSwapEvent(
+    bool IsBuy,
+    long Timestamp,
+    ulong BaseAmount,
+    ulong QuoteAmount,
+    PublicKey Pool,
+    PublicKey User) : PumpEvent
+{
+    public static readonly byte[] BuyDisc = { 103, 244, 82, 31, 44, 245, 119, 119 };
+    public static readonly byte[] SellDisc = { 62, 47, 55, 10, 165, 3, 220, 42 };
+
+    public static AmmSwapEvent? TryParse(byte[] raw)
+    {
+        if (raw.Length < 184)
+            return null;
+
+        bool isBuy;
+        if (raw.AsSpan(0, 8).SequenceEqual(BuyDisc)) isBuy = true;
+        else if (raw.AsSpan(0, 8).SequenceEqual(SellDisc)) isBuy = false;
+        else return null;
+
+        int o = 8;
+        var ts = (long)R.U64(raw, ref o);
+        var baseAmount = R.U64(raw, ref o);
+        o += 8;        // max/min quote bound
+        o += 8 * 4;    // user/pool reserves
+        var quoteAmount = R.U64(raw, ref o);
+        o += 8 * 6;    // fee fields
+        var pool = R.Key(raw, ref o);
+        var user = R.Key(raw, ref o);
+
+        return new AmmSwapEvent(isBuy, ts, baseAmount, quoteAmount, pool, user);
+    }
+}
+
 public static class EventDecoder
 {
     private const string Prefix = "Program data: ";
 
     public static PumpEvent? Decode(byte[] raw)
     {
-        return (PumpEvent?)TradeEvent.TryParse(raw) ?? MigrationEvent.TryParse(raw);
+        return (PumpEvent?)TradeEvent.TryParse(raw)
+            ?? (PumpEvent?)MigrationEvent.TryParse(raw)
+            ?? (PumpEvent?)AmmSwapEvent.TryParse(raw);
     }
 
     public static PumpEvent? DecodeLogLine(string line)
@@ -175,9 +215,6 @@ public static class EventDecoder
             return null;
         }
     }
-
-    internal static byte[] EventDisc(string name)
-        => SHA256.HashData(Encoding.UTF8.GetBytes("event:" + name))[..8];
 }
 
 internal static class R

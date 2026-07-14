@@ -122,4 +122,29 @@ public class EventTests
         Assert.NotNull(EventDecoder.DecodeLogLine(line));
         Assert.Null(EventDecoder.DecodeLogLine("Program log: Instruction: Buy"));
     }
+
+    [Fact]
+    public void AmmSwapEvent_ParsesBuy()
+    {
+        var data = new List<byte>();
+        data.AddRange(AmmSwapEvent.BuyDisc);
+        data.AddRange(U64(1700000000));          // ts
+        data.AddRange(U64(5_000_000));           // base out
+        data.AddRange(U64(999));                 // max quote in
+        for (int i = 0; i < 4; i++) data.AddRange(U64(1));   // reserves
+        data.AddRange(U64(120_000_000));         // quote in
+        for (int i = 0; i < 6; i++) data.AddRange(U64(2));   // fee fields
+        data.AddRange(Enumerable.Repeat((byte)8, 32));      // pool
+        data.AddRange(Enumerable.Repeat((byte)9, 32));      // user
+        data.AddRange(new byte[64]);             // tail
+
+        var e = AmmSwapEvent.TryParse(data.ToArray());
+
+        Assert.NotNull(e);
+        Assert.True(e.IsBuy);
+        Assert.Equal(5_000_000UL, e.BaseAmount);
+        Assert.Equal(120_000_000UL, e.QuoteAmount);
+        Assert.Equal(new PublicKey(Enumerable.Repeat((byte)9, 32).ToArray()).Key, e.User.Key);
+        Assert.IsType<AmmSwapEvent>(EventDecoder.Decode(data.ToArray()));
+    }
 }
