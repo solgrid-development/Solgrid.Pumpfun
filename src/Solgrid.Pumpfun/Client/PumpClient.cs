@@ -82,6 +82,12 @@ public partial class PumpClient
         return new CoinState { Mint = mintKey, Curve = curve, Pool = pool, QuoteMint = pool?.QuoteMint ?? curve.QuoteMint };
     }
 
+    public async Task<AmmPool?> GetPoolAsync(PublicKey pool)
+    {
+        var acc = await _rpc.GetAccountInfoAsync(pool.Key, Commitment.Confirmed);
+        return TryAccount(acc, AmmPool.Deserialize);
+    }
+
     // pool pda needs index+creator we do not have, so filter program accounts
     // by base mint; happens once per migrated coin, cached by callers
     public async Task<AmmPool?> FindPoolAsync(PublicKey baseMint)
