@@ -16,6 +16,8 @@ public class CoinState
     public AmmPool? Pool { get; init; }
     public bool Migrated => Curve?.Complete == true;
     public PublicKey QuoteMint { get; init; } = new(new byte[32]);
+    public PublicKey BaseTokenProgram { get; init; } = Solnet.Programs.TokenProgram.ProgramIdKey;
+    public PublicKey QuoteTokenProgram { get; init; } = Solnet.Programs.TokenProgram.ProgramIdKey;
     public bool NeedsV2 => QuoteMint.Key != new PublicKey(new byte[32]).Key;
 }
 
@@ -65,6 +67,24 @@ public partial class PumpClient
         return _ammConfig;
     }
 
+    private readonly Dictionary<string, PublicKey> _tokenPrograms = new();
+
+    // spl-token or token-2022, from the mint account owner; pump coins mint
+    // both ways and the ata create must match or the tx dies
+    public async Task<PublicKey> TokenProgramOfAsync(PublicKey mint)
+    {
+        var key = mint.Key;
+        if (_tokenPrograms.TryGetValue(key, out var cached))
+            return cached;
+
+        var info = await _rpc.GetAccountInfoAsync(key, Commitment.Confirmed);
+        var owner = info.WasSuccessful && info.Result?.Value != null
+            ? new PublicKey(info.Result.Value.Owner)
+            : Solnet.Programs.TokenProgram.ProgramIdKey;
+        _tokenPrograms[key] = owner;
+        return owner;
+    }
+
     public async Task<CoinState?> GetCoinStateAsync(string mint)
     {
         var mintKey = new PublicKey(mint);
@@ -74,12 +94,32 @@ public partial class PumpClient
         if (curve == null)
             return null;
 
-        var state = new CoinState { Mint = mintKey, Curve = curve, QuoteMint = curve.QuoteMint };
+        var baseTp = await TokenProgramOfAsync(mintKey);
+        var quoteTp = curve.QuoteMint.Key == new PublicKey(new byte[32]).Key
+            ? baseTp
+            : await TokenProgramOfAsync(curve.QuoteMint);
+
+        var state = new CoinState
+        {
+            Mint = mintKey,
+            Curve = curve,
+            QuoteMint = curve.QuoteMint,
+            BaseTokenProgram = baseTp,
+            QuoteTokenProgram = quoteTp,
+        };
         if (!curve.Complete)
             return state;
 
         var pool = await FindPoolAsync(mintKey);
-        return new CoinState { Mint = mintKey, Curve = curve, Pool = pool, QuoteMint = pool?.QuoteMint ?? curve.QuoteMint };
+        return new CoinState
+        {
+            Mint = mintKey,
+            Curve = curve,
+            Pool = pool,
+            QuoteMint = pool?.QuoteMint ?? curve.QuoteMint,
+            BaseTokenProgram = baseTp,
+            QuoteTokenProgram = pool != null ? await TokenProgramOfAsync(pool.QuoteMint) : quoteTp,
+        };
     }
 
     public async Task<AmmPool?> GetPoolAsync(PublicKey pool)

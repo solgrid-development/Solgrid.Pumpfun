@@ -38,11 +38,11 @@ public partial class PumpClient
         {
             var accounts = new PumpTradeAccounts(
                 state.Mint, state.QuoteMint, Pda.BondingCurve(state.Mint), state.Curve.Creator,
-                Trader.PublicKey, TokenProgram.ProgramIdKey, TokenProgram.ProgramIdKey,
+                Trader.PublicKey, state.BaseTokenProgram, state.QuoteTokenProgram,
                 g.FeeRecipient, g.FeeRecipient);
 
-            var userAta = Pda.Ata(Trader.PublicKey, TokenProgram.ProgramIdKey, state.Mint);
-            await AddAtaIfMissing(builder, userAta, Trader.PublicKey, state.Mint);
+            var userAta = Pda.Ata(Trader.PublicKey, state.BaseTokenProgram, state.Mint);
+            await AddAtaIfMissing(builder, userAta, Trader.PublicKey, state.Mint, state.BaseTokenProgram);
 
             var ix = state.NeedsV2
                 ? PumpInstructionsV2.Buy(accounts, tokensOut, maxQuote)
@@ -52,21 +52,21 @@ public partial class PumpClient
         else
         {
             var pool = state.Pool!;
+            var reserves = await PoolReservesAsync(pool);
             var cfg = await AmmConfigAsync();
             if (cfg == null)
                 return (false, "amm config not readable", null);
 
-            var reserves = await PoolReservesAsync(pool);
             var baseOut = Quotes.BuyTokensOnPool(reserves.Base, reserves.Quote, cfg, quoteIn);
 
             var swap = new AmmSwapAccounts(pool, Trader.PublicKey, Pda.AmmGlobalConfig(),
                 cfg.ProtocolFeeRecipients.Length > 0 ? cfg.ProtocolFeeRecipients[0] : new PublicKey(new byte[32]),
-                TokenProgram.ProgramIdKey, TokenProgram.ProgramIdKey);
+                state.BaseTokenProgram, state.QuoteTokenProgram);
 
-            var userBase = Pda.Ata(Trader.PublicKey, TokenProgram.ProgramIdKey, pool.BaseMint);
-            var userQuote = Pda.Ata(Trader.PublicKey, TokenProgram.ProgramIdKey, pool.QuoteMint);
-            await AddAtaIfMissing(builder, userBase, Trader.PublicKey, pool.BaseMint);
-            await AddAtaIfMissing(builder, userQuote, Trader.PublicKey, pool.QuoteMint);
+            var userBase = Pda.Ata(Trader.PublicKey, state.BaseTokenProgram, pool.BaseMint);
+            var userQuote = Pda.Ata(Trader.PublicKey, state.QuoteTokenProgram, pool.QuoteMint);
+            await AddAtaIfMissing(builder, userBase, Trader.PublicKey, pool.BaseMint, state.BaseTokenProgram);
+            await AddAtaIfMissing(builder, userQuote, Trader.PublicKey, pool.QuoteMint, state.QuoteTokenProgram);
 
             builder.AddInstruction(AmmInstructions.Buy(swap, baseOut, maxQuote));
         }
@@ -98,7 +98,7 @@ public partial class PumpClient
 
             var accounts = new PumpTradeAccounts(
                 state.Mint, state.QuoteMint, Pda.BondingCurve(state.Mint), state.Curve.Creator,
-                Trader.PublicKey, TokenProgram.ProgramIdKey, TokenProgram.ProgramIdKey,
+                Trader.PublicKey, state.BaseTokenProgram, state.QuoteTokenProgram,
                 g.FeeRecipient, g.FeeRecipient);
 
             var ix = state.NeedsV2
@@ -108,8 +108,8 @@ public partial class PumpClient
 
             if (closeAta)
                 builder.AddInstruction(TokenProgram.CloseAccount(
-                    Pda.Ata(Trader.PublicKey, TokenProgram.ProgramIdKey, state.Mint),
-                    Trader.PublicKey, Trader.PublicKey, TokenProgram.ProgramIdKey));
+                    Pda.Ata(Trader.PublicKey, state.BaseTokenProgram, state.Mint),
+                    Trader.PublicKey, Trader.PublicKey, state.BaseTokenProgram));
         }
         else
         {
@@ -128,7 +128,7 @@ public partial class PumpClient
 
             var swap = new AmmSwapAccounts(state.Pool, Trader.PublicKey, Pda.AmmGlobalConfig(),
                 cfg.ProtocolFeeRecipients.Length > 0 ? cfg.ProtocolFeeRecipients[0] : new PublicKey(new byte[32]),
-                TokenProgram.ProgramIdKey, TokenProgram.ProgramIdKey);
+                state.BaseTokenProgram, state.QuoteTokenProgram);
             builder.AddInstruction(AmmInstructions.Sell(swap, baseIn, minOut));
         }
 
@@ -141,11 +141,11 @@ public partial class PumpClient
             .AddInstruction(ComputeBudgetProgram.SetComputeUnitLimit((uint)cuLimit))
             .AddInstruction(ComputeBudgetProgram.SetComputeUnitPrice((ulong)cuPrice));
 
-    private async Task AddAtaIfMissing(TransactionBuilder builder, PublicKey ata, PublicKey owner, PublicKey mint)
+    private async Task AddAtaIfMissing(TransactionBuilder builder, PublicKey ata, PublicKey owner, PublicKey mint, PublicKey tokenProgram)
     {
         var info = await _rpc.GetAccountInfoAsync(ata.Key, Commitment.Confirmed);
         if (info.WasSuccessful && info.Result?.Value == null)
-            builder.AddInstruction(AssociatedTokenAccountProgram.CreateAssociatedTokenAccount(Trader!, owner, mint));
+            builder.AddInstruction(AtaInstructions.Create(Trader!, owner, mint, tokenProgram));
     }
 
     private async Task<(bool Ok, string? Error, string? Signature)> SendAsync(TransactionBuilder builder, string what)
