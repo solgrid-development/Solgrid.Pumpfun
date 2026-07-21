@@ -44,6 +44,7 @@ public partial class PumpClient
     private AmmGlobalConfig? _ammConfig;
 
     public Account? Trader { get; }
+    public IRpcClient Rpc => _rpc;
 
     public PumpClient(IRpcClient rpc, Account? trader = null)
     {

@@ -36,9 +36,10 @@ public static class Pda
     public static PublicKey UserVolumeAccumulator(PublicKey program, PublicKey user) =>
         Find(new[] { Utf8("user_volume_accumulator"), user.KeyBytes }, program);
 
-    // fee_config seed carries the fee program pubkey as a constant second seed
-    public static PublicKey FeeConfig(PublicKey program) =>
-        Find(new[] { Utf8("fee_config"), Addresses.PumpFees.KeyBytes }, program);
+    // fee_config lives under the FEE program; second seed is the address of
+    // the calling program (pump or amm), per the IDL pda definitions
+    public static PublicKey FeeConfig(PublicKey callingProgram) =>
+        Find(new[] { Utf8("fee_config"), callingProgram.KeyBytes }, Addresses.PumpFees);
 
     public static PublicKey EventAuthority(PublicKey program) =>
         Find(new[] { Utf8("__event_authority") }, program);
