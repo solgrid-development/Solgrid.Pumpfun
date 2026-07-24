@@ -21,6 +21,10 @@ public static class Pda
     public static PublicKey BondingCurve(PublicKey mint) =>
         Find(new[] { Utf8("bonding-curve"), mint.KeyBytes }, Addresses.Pump);
 
+    // passed as remaining account on v1 trades
+    public static PublicKey BondingCurveV2(PublicKey mint) =>
+        Find(new[] { Utf8("bonding-curve-v2"), mint.KeyBytes }, Addresses.Pump);
+
     public static PublicKey AssociatedBondingCurve(PublicKey curve, PublicKey tokenProgram, PublicKey mint) =>
         Find(new[] { curve.KeyBytes, tokenProgram.KeyBytes, mint.KeyBytes }, AssociatedTokenAccountProgram.ProgramIdKey);
 

@@ -43,6 +43,9 @@ public class PumpGlobal
     public ulong FeeBasisPoints { get; init; }
     public ulong CreatorFeeBasisPoints { get; init; }
     public PublicKey[] WhitelistedQuoteMints { get; init; } = Array.Empty<PublicKey>();
+    public PublicKey[] FeeRecipients { get; init; } = Array.Empty<PublicKey>();
+    public PublicKey[] BuybackFeeRecipients { get; init; } = Array.Empty<PublicKey>();
+    public ulong BuybackBasisPoints { get; init; }
 
     // partial parse, only what traders need; layout order follows the IDL
     public static PumpGlobal? Deserialize(byte[] data)
@@ -63,7 +66,7 @@ public class PumpGlobal
         Read.Bool(data, ref o);              // enable_migrate
         Read.U64(data, ref o);               // pool_migration_fee
         var creatorFeeBps = Read.U64(data, ref o);
-        Read.Keys(data, ref o, 7);           // fee_recipients
+        var feeRecipients = Read.Keys(data, ref o, 7);
         Read.Key(data, ref o);               // set_creator_authority
         Read.Key(data, ref o);               // admin_set_creator_authority
         Read.Bool(data, ref o);              // create_v2_enabled
@@ -72,8 +75,8 @@ public class PumpGlobal
         Read.Bool(data, ref o);              // mayhem_mode_enabled
         Read.Keys(data, ref o, 7);           // reserved_fee_recipients
         Read.Bool(data, ref o);              // is_cashback_enabled
-        Read.Keys(data, ref o, 8);           // buyback_fee_recipients
-        Read.U64(data, ref o);               // buyback_basis_points
+        var buybackRecipients = Read.Keys(data, ref o, 8);
+        var buybackBps = Read.U64(data, ref o);
         Read.U64(data, ref o);               // initial_virtual_quote_reserves
         var quoteMints = Read.Keys(data, ref o, 1);
 
@@ -83,6 +86,9 @@ public class PumpGlobal
             FeeBasisPoints = feeBps,
             CreatorFeeBasisPoints = creatorFeeBps,
             WhitelistedQuoteMints = quoteMints,
+            FeeRecipients = feeRecipients,
+            BuybackFeeRecipients = buybackRecipients,
+            BuybackBasisPoints = buybackBps,
         };
     }
 }
