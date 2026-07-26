@@ -20,7 +20,7 @@ public class InstructionTests
     [Fact]
     public void BuyV1_DataLayout()
     {
-        var ix = PumpInstructions.Buy(Accounts(), 1234, 5678, trackVolume: false);
+        var ix = PumpInstructions.Buy(Accounts(), 1234, 5678, new Solnet.Wallet.PublicKey(new byte[32]), trackVolume: false);
 
         Assert.Equal(25, ix.Data.Length);
         Assert.Equal(102, ix.Data[0]);
@@ -28,18 +28,18 @@ public class InstructionTests
         Assert.Equal(1234UL, BitConverter.ToUInt64(ix.Data, 8));
         Assert.Equal(5678UL, BitConverter.ToUInt64(ix.Data, 16));
         Assert.Equal(0, ix.Data[24]);
-        Assert.Equal(16, ix.Keys.Count);
+        Assert.Equal(18, ix.Keys.Count);
     }
 
     [Fact]
     public void SellV1_DataLayout()
     {
-        var ix = PumpInstructions.Sell(Accounts(), 999, 111);
+        var ix = PumpInstructions.Sell(Accounts(), 999, 111, new Solnet.Wallet.PublicKey(new byte[32]));
 
         Assert.Equal(24, ix.Data.Length);
         Assert.Equal(51, ix.Data[0]);
         Assert.Equal(999UL, BitConverter.ToUInt64(ix.Data, 8));
-        Assert.Equal(14, ix.Keys.Count);
+        Assert.Equal(16, ix.Keys.Count);
     }
 
     [Fact]

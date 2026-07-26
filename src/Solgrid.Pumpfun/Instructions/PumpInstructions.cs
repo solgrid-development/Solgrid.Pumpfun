@@ -25,7 +25,10 @@ public static class PumpInstructions
 
     // current v1 buy: creator vault, volume accumulators and the fee
     // program cpi are mandatory now, the old 12-account layout fails
-    public static TransactionInstruction Buy(PumpTradeAccounts a, ulong tokenAmountOut, ulong maxQuoteCost, bool trackVolume = true)
+    // v1 trades carry two remaining accounts: the v2 curve pda and an
+    // authorized buyback fee recipient; sells on cashback coins prepend the
+    // user volume accumulator
+    public static TransactionInstruction Buy(PumpTradeAccounts a, ulong tokenAmountOut, ulong maxQuoteCost, PublicKey buybackFeeRecipient, bool trackVolume = true)
     {
         var assocCurve = Pda.AssociatedBondingCurve(a.Curve, a.BaseTokenProgram, a.Mint);
         var userAta = Pda.Ata(a.User, a.BaseTokenProgram, a.Mint);
@@ -49,6 +52,8 @@ public static class PumpInstructions
             AccountMeta.Writable(Pda.UserVolumeAccumulator(Addresses.Pump, a.User), false),
             AccountMeta.ReadOnly(Pda.FeeConfig(Addresses.Pump), false),
             AccountMeta.ReadOnly(Addresses.PumpFees, false),
+            AccountMeta.ReadOnly(Pda.BondingCurveV2(a.Mint), false),
+            AccountMeta.Writable(buybackFeeRecipient, false),
         };
 
         var data = new byte[8 + 8 + 8 + 1];
@@ -60,7 +65,7 @@ public static class PumpInstructions
         return new TransactionInstruction { Keys = keys, ProgramId = Addresses.Pump, Data = data };
     }
 
-    public static TransactionInstruction Sell(PumpTradeAccounts a, ulong tokenAmountIn, ulong minQuoteOut)
+    public static TransactionInstruction Sell(PumpTradeAccounts a, ulong tokenAmountIn, ulong minQuoteOut, PublicKey buybackFeeRecipient, bool cashback = false)
     {
         var assocCurve = Pda.AssociatedBondingCurve(a.Curve, a.BaseTokenProgram, a.Mint);
         var userAta = Pda.Ata(a.User, a.BaseTokenProgram, a.Mint);
@@ -83,6 +88,12 @@ public static class PumpInstructions
             AccountMeta.ReadOnly(Pda.FeeConfig(Addresses.Pump), false),
             AccountMeta.ReadOnly(Addresses.PumpFees, false),
         };
+
+        if (cashback)
+            keys.Add(AccountMeta.Writable(Pda.UserVolumeAccumulator(Addresses.Pump, a.User), false));
+
+        keys.Add(AccountMeta.ReadOnly(Pda.BondingCurveV2(a.Mint), false));
+        keys.Add(AccountMeta.Writable(buybackFeeRecipient, false));
 
         var data = new byte[24];
         SellDisc.CopyTo(data, 0);
