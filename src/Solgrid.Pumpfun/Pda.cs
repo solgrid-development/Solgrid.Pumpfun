@@ -67,4 +67,12 @@ public static class Pda
     // same seed string as the pump creator vault, but under the amm program
     public static PublicKey AmmCoinCreatorVaultAuthority(PublicKey coinCreator) =>
         Find(new[] { Utf8("creator-vault"), coinCreator.KeyBytes }, Addresses.PumpAmm);
+
+    // ---- pumpswap pool derivation, no program-accounts scan needed ----
+
+    public static PublicKey PumpPoolAuthority(PublicKey mint) =>
+        Find(new[] { Utf8("pool-authority"), mint.KeyBytes }, Addresses.Pump);
+
+    public static PublicKey CanonicalPool(PublicKey mint, PublicKey quoteMint) =>
+        AmmPool(0, PumpPoolAuthority(mint), mint, quoteMint);
 }
