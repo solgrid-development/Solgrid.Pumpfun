@@ -75,4 +75,18 @@ public static class Pda
 
     public static PublicKey CanonicalPool(PublicKey mint, PublicKey quoteMint) =>
         AmmPool(0, PumpPoolAuthority(mint), mint, quoteMint);
+
+    // ---- mayhem ----
+
+    public static PublicKey MayhemGlobalParams() =>
+        Find(new[] { Utf8("global-params") }, Addresses.Mayhem);
+
+    public static PublicKey MayhemSolVault() =>
+        Find(new[] { Utf8("sol-vault") }, Addresses.Mayhem);
+
+    public static PublicKey MayhemState(PublicKey mint) =>
+        Find(new[] { Utf8("mayhem-state"), mint.KeyBytes }, Addresses.Mayhem);
+
+    public static PublicKey MayhemTokenVault(PublicKey mint) =>
+        Ata(mint, MayhemSolVault(), Addresses.Token2022);
 }

@@ -12,4 +12,10 @@ public static class Addresses
 
     // pump-fees, cpi'd from both programs for fee config
     public static readonly PublicKey PumpFees = new("pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ");
+
+    // mayhem mode program (mayhem coins, cashback infra)
+    public static readonly PublicKey Mayhem = new("MAyhSmzXzV1pTf7LsNkrNwkWKTo4ougAJ1PPg47MD4e");
+
+    public static readonly PublicKey Token2022 = new("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+    public static readonly PublicKey NativeMint = new("So111111111111111111111111111112");
 }
