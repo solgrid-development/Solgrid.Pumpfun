@@ -45,6 +45,9 @@ public class PumpGlobal
     public PublicKey[] WhitelistedQuoteMints { get; init; } = Array.Empty<PublicKey>();
     public PublicKey[] FeeRecipients { get; init; } = Array.Empty<PublicKey>();
     public PublicKey[] BuybackFeeRecipients { get; init; } = Array.Empty<PublicKey>();
+    public PublicKey[] ReservedFeeRecipients { get; init; } = Array.Empty<PublicKey>();
+    public PublicKey ReservedFeeRecipient { get; init; } = new(new byte[32]);
+    public PublicKey WithdrawAuthority { get; init; } = new(new byte[32]);
     public ulong BuybackBasisPoints { get; init; }
 
     // partial parse, only what traders need; layout order follows the IDL
@@ -62,7 +65,7 @@ public class PumpGlobal
         Read.U64(data, ref o);               // initial_real_token_reserves
         Read.U64(data, ref o);               // token_total_supply
         var feeBps = Read.U64(data, ref o);
-        Read.Key(data, ref o);               // withdraw_authority
+        var withdrawAuthority = Read.Key(data, ref o);
         Read.Bool(data, ref o);              // enable_migrate
         Read.U64(data, ref o);               // pool_migration_fee
         var creatorFeeBps = Read.U64(data, ref o);
@@ -71,9 +74,9 @@ public class PumpGlobal
         Read.Key(data, ref o);               // admin_set_creator_authority
         Read.Bool(data, ref o);              // create_v2_enabled
         Read.Key(data, ref o);               // whitelist_pda
-        Read.Key(data, ref o);               // reserved_fee_recipient
+        var reservedFeeRecipient = Read.Key(data, ref o);
         Read.Bool(data, ref o);              // mayhem_mode_enabled
-        Read.Keys(data, ref o, 7);           // reserved_fee_recipients
+        var reservedRecipients = Read.Keys(data, ref o, 7);
         Read.Bool(data, ref o);              // is_cashback_enabled
         var buybackRecipients = Read.Keys(data, ref o, 8);
         var buybackBps = Read.U64(data, ref o);
@@ -88,6 +91,9 @@ public class PumpGlobal
             WhitelistedQuoteMints = quoteMints,
             FeeRecipients = feeRecipients,
             BuybackFeeRecipients = buybackRecipients,
+            ReservedFeeRecipients = reservedRecipients,
+            ReservedFeeRecipient = reservedFeeRecipient,
+            WithdrawAuthority = withdrawAuthority,
             BuybackBasisPoints = buybackBps,
         };
     }
