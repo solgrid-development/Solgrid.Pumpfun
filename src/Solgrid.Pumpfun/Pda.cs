@@ -32,7 +32,7 @@ public static class Pda
         Find(new[] { Utf8("creator-vault"), creator.KeyBytes }, Addresses.Pump);
 
     public static PublicKey SharingConfig(PublicKey mint) =>
-        Find(new[] { Utf8("sharing-config"), mint.KeyBytes }, Addresses.Pump);
+        Find(new[] { Utf8("sharing-config"), mint.KeyBytes }, Addresses.PumpFees);
 
     public static PublicKey GlobalVolumeAccumulator(PublicKey program) =>
         Find(new[] { Utf8("global_volume_accumulator") }, program);
