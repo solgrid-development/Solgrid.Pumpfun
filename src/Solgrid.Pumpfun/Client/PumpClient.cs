@@ -99,25 +99,31 @@ public partial class PumpClient
         var quoteTp = curve.QuoteMint.Key == new PublicKey(new byte[32]).Key
             ? baseTp
             : await TokenProgramOfAsync(curve.QuoteMint);
+        var quoteMint = curve.QuoteMint.Key == new PublicKey(new byte[32]).Key
+            ? Addresses.NativeMint
+            : curve.QuoteMint;
 
         var state = new CoinState
         {
             Mint = mintKey,
             Curve = curve,
-            QuoteMint = curve.QuoteMint,
+            QuoteMint = quoteMint,
             BaseTokenProgram = baseTp,
             QuoteTokenProgram = quoteTp,
         };
         if (!curve.Complete)
             return state;
 
-        var pool = await FindPoolAsync(mintKey);
+        // canonical pool derives directly; scan only as a last resort for
+        // non-canonical pools
+        var pool = await GetPoolAsync(Pda.CanonicalPool(mintKey, quoteMint))
+            ?? await FindPoolAsync(mintKey);
         return new CoinState
         {
             Mint = mintKey,
             Curve = curve,
             Pool = pool,
-            QuoteMint = pool?.QuoteMint ?? curve.QuoteMint,
+            QuoteMint = pool?.QuoteMint ?? quoteMint,
             BaseTokenProgram = baseTp,
             QuoteTokenProgram = pool != null ? await TokenProgramOfAsync(pool.QuoteMint) : quoteTp,
         };

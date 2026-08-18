@@ -40,7 +40,7 @@ public partial class PumpClient
             var accounts = new PumpTradeAccounts(
                 state.Mint, state.QuoteMint, Pda.BondingCurve(state.Mint), state.Curve.Creator,
                 Trader.PublicKey, state.BaseTokenProgram, state.QuoteTokenProgram,
-                PickFeeRecipient(g), PickBuyback(g));
+                PickFeeRecipient(g, state.Curve.IsMayhemMode), PickBuyback(g));
 
             var userAta = Pda.Ata(Trader.PublicKey, state.BaseTokenProgram, state.Mint);
             await AddAtaIfMissing(builder, userAta, Trader.PublicKey, state.Mint, state.BaseTokenProgram);
@@ -108,7 +108,7 @@ public partial class PumpClient
             var accounts = new PumpTradeAccounts(
                 state.Mint, state.QuoteMint, Pda.BondingCurve(state.Mint), state.Curve.Creator,
                 Trader.PublicKey, state.BaseTokenProgram, state.QuoteTokenProgram,
-                PickFeeRecipient(g), PickBuyback(g));
+                PickFeeRecipient(g, state.Curve.IsMayhemMode), PickBuyback(g));
 
             var ix = state.NeedsV2
                 ? PumpInstructionsV2.Sell(accounts, baseIn, minQuote)
@@ -153,11 +153,12 @@ public partial class PumpClient
         return list.Count == 0 ? zero : list[Random.Shared.Next(list.Count)];
     }
 
-    private static PublicKey PickFeeRecipient(PumpGlobal g)
+    private static PublicKey PickFeeRecipient(PumpGlobal g, bool mayhem)
     {
         var zero = new PublicKey(new byte[32]);
-        var list = new List<PublicKey> { g.FeeRecipient };
-        list.AddRange(g.FeeRecipients);
+        var list = mayhem
+            ? new List<PublicKey> { g.ReservedFeeRecipient }.Concat(g.ReservedFeeRecipients).ToList()
+            : new List<PublicKey> { g.FeeRecipient }.Concat(g.FeeRecipients).ToList();
         list = list.Where(k => k.Key != zero.Key).ToList();
         return list.Count == 0 ? g.FeeRecipient : list[Random.Shared.Next(list.Count)];
     }

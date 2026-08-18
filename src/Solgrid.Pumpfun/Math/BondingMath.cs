@@ -12,7 +12,7 @@ public static class BondingMath
     {
         if (virtualQuote == 0 || virtualToken == 0 || quoteIn == 0)
             return 0;
-        ulong eff = quoteIn - quoteIn * feeBps / 10000;
+        ulong eff = quoteIn - CeilFee(quoteIn, feeBps);
         return (ulong)(new BigInteger(virtualToken) * eff / (virtualQuote + eff));
     }
 
@@ -20,19 +20,23 @@ public static class BondingMath
     {
         if (virtualQuote == 0 || virtualToken == 0 || tokensIn == 0)
             return 0;
-        ulong eff = tokensIn - tokensIn * feeBps / 10000;
+        ulong eff = tokensIn - CeilFee(tokensIn, feeBps);
         return (ulong)(new BigInteger(virtualQuote) * eff / (virtualToken + eff));
     }
 
+    // program rounds fees up, matching ceilDiv in the official sdk
+    public static ulong CeilFee(ulong amount, ulong feeBps)
+        => (amount * feeBps + 9999) / 10000;
+
     public static (ulong VirtualQuote, ulong VirtualToken) AfterBuy(ulong virtualQuote, ulong virtualToken, ulong quoteIn, ulong tokensOut, ulong feeBps = DefaultFeeBps)
     {
-        ulong eff = quoteIn - quoteIn * feeBps / 10000;
+        ulong eff = quoteIn - CeilFee(quoteIn, feeBps);
         return (virtualQuote + eff, virtualToken - tokensOut);
     }
 
     public static (ulong VirtualQuote, ulong VirtualToken) AfterSell(ulong virtualQuote, ulong virtualToken, ulong quoteOut, ulong tokensIn, ulong feeBps = DefaultFeeBps)
     {
-        ulong eff = tokensIn - tokensIn * feeBps / 10000;
+        ulong eff = tokensIn - CeilFee(tokensIn, feeBps);
         return (virtualQuote - quoteOut, virtualToken + eff);
     }
 

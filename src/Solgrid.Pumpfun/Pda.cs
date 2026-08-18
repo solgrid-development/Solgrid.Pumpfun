@@ -32,7 +32,7 @@ public static class Pda
         Find(new[] { Utf8("creator-vault"), creator.KeyBytes }, Addresses.Pump);
 
     public static PublicKey SharingConfig(PublicKey mint) =>
-        Find(new[] { Utf8("sharing-config"), mint.KeyBytes }, Addresses.Pump);
+        Find(new[] { Utf8("sharing-config"), mint.KeyBytes }, Addresses.PumpFees);
 
     public static PublicKey GlobalVolumeAccumulator(PublicKey program) =>
         Find(new[] { Utf8("global_volume_accumulator") }, program);
@@ -67,4 +67,26 @@ public static class Pda
     // same seed string as the pump creator vault, but under the amm program
     public static PublicKey AmmCoinCreatorVaultAuthority(PublicKey coinCreator) =>
         Find(new[] { Utf8("creator-vault"), coinCreator.KeyBytes }, Addresses.PumpAmm);
+
+    // ---- pumpswap pool derivation, no program-accounts scan needed ----
+
+    public static PublicKey PumpPoolAuthority(PublicKey mint) =>
+        Find(new[] { Utf8("pool-authority"), mint.KeyBytes }, Addresses.Pump);
+
+    public static PublicKey CanonicalPool(PublicKey mint, PublicKey quoteMint) =>
+        AmmPool(0, PumpPoolAuthority(mint), mint, quoteMint);
+
+    // ---- mayhem ----
+
+    public static PublicKey MayhemGlobalParams() =>
+        Find(new[] { Utf8("global-params") }, Addresses.Mayhem);
+
+    public static PublicKey MayhemSolVault() =>
+        Find(new[] { Utf8("sol-vault") }, Addresses.Mayhem);
+
+    public static PublicKey MayhemState(PublicKey mint) =>
+        Find(new[] { Utf8("mayhem-state"), mint.KeyBytes }, Addresses.Mayhem);
+
+    public static PublicKey MayhemTokenVault(PublicKey mint) =>
+        Ata(mint, MayhemSolVault(), Addresses.Token2022);
 }
