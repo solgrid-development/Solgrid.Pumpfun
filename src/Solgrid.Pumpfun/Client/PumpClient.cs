@@ -18,7 +18,13 @@ public class CoinState
     public PublicKey QuoteMint { get; init; } = new(new byte[32]);
     public PublicKey BaseTokenProgram { get; init; } = Solnet.Programs.TokenProgram.ProgramIdKey;
     public PublicKey QuoteTokenProgram { get; init; } = Solnet.Programs.TokenProgram.ProgramIdKey;
-    public bool NeedsV2 => QuoteMint.Key != new PublicKey(new byte[32]).Key;
+
+    // legacy quotes: unset, native sol, wrapped sol; anything else (usdc etc)
+    // means the coin was created with create_v2 and trades via the v2 ix
+    public bool NeedsV2 =>
+        QuoteMint.Key != new PublicKey(new byte[32]).Key
+        && QuoteMint.Key != new PublicKey("11111111111111111111111111111111").Key
+        && QuoteMint.Key != new PublicKey("So111111111111111111111111111112").Key;
 }
 
 public static class Quotes
