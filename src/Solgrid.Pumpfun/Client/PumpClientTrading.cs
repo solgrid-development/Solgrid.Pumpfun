@@ -179,12 +179,15 @@ public partial class PumpClient
     private async Task<(byte[]? Tx, string? Error)> SignAsync(TransactionBuilder builder)
     {
         var bh = await _rpc.GetLatestBlockHashAsync(Commitment.Confirmed);
+        SdkLog.Trace($"blockhash={bh.Result?.Value?.Blockhash} ok={bh.WasSuccessful}");
         if (!bh.WasSuccessful || bh.Result?.Value == null)
             return (null, "no blockhash");
 
         try
         {
-            return (builder.SetRecentBlockHash(bh.Result.Value.Blockhash).Build(Trader!), null);
+            var tx = builder.SetRecentBlockHash(bh.Result.Value.Blockhash).Build(Trader!);
+        SdkLog.Trace($"signed tx len={tx.Length} feePayer={Trader.PublicKey.Key[..8]}");
+        return (tx, null);
         }
         catch (Exception ex)
         {
@@ -194,7 +197,9 @@ public partial class PumpClient
 
     private async Task<(bool Ok, string? Error, string? Signature)> SendRawAsync(byte[] tx, string what)
     {
+        SdkLog.Trace($"sendTransaction what={what} len={tx.Length}");
         var res = await _rpc.SendTransactionAsync(tx, true, Commitment.Confirmed);
+        SdkLog.Trace($"send result ok={res.WasSuccessful} sig={res.Result} reason={res.Reason}");
         if (!res.WasSuccessful || string.IsNullOrEmpty(res.Result))
             return (false, res.Reason ?? "send failed", null);
 
