@@ -21,6 +21,7 @@ public partial class PumpClient
         var state = await GetCoinStateAsync(mint);
         if (state?.Curve == null)
             return (null, "coin not found");
+        SdkLog.Trace($"build {mint[..8]}: migrated={state.Migrated} v2={state.NeedsV2} vq={state.Curve.VirtualQuoteReserves} vt={state.Curve.VirtualTokenReserves} creator={state.Curve.Creator.Key[..8]} quote={state.QuoteMint.Key[..8]} baseTp={state.BaseTokenProgram.Key[..8]} pool={(state.Pool == null ? "none" : "yes")}");
         if (state.Migrated && state.Pool == null)
             return (null, "migrated but pool not found");
 
@@ -28,6 +29,7 @@ public partial class PumpClient
         if (tokensOut == 0)
             return (null, "zero quote");
         var maxQuote = quoteIn + quoteIn * (ulong)slippageBps / 10000;
+        SdkLog.Trace($"buy quote {mint[..8]}: in={quoteIn} tokensOut={tokensOut} maxQuote={maxQuote}");
 
         var g = await GlobalAsync();
         if (g == null)
@@ -85,22 +87,32 @@ public partial class PumpClient
 
     public async Task<(bool Ok, string? Error, string? Signature)> SellAsync(string mint, ulong baseIn, int slippageBps, ulong cuPrice, bool closeAta = false, ulong cuLimit = DefaultCuLimit)
     {
+        var (tx, err) = await BuildSellAsync(mint, baseIn, slippageBps, cuPrice, closeAta, cuLimit);
+        if (tx == null)
+            return (false, err, null);
+        return await SendRawAsync(tx, $"sell {mint[..6]}");
+    }
+
+    public async Task<(byte[]? Tx, string? Error)> BuildSellAsync(string mint, ulong baseIn, int slippageBps, ulong cuPrice, bool closeAta = false, ulong cuLimit = DefaultCuLimit)
+    {
         if (Trader == null)
-            return (false, "no trader account", null);
+            return (null, "no trader account");
 
         var state = await GetCoinStateAsync(mint);
         if (state?.Curve == null)
-            return (false, "coin not found", null);
+            return (null, "coin not found");
+        SdkLog.Trace($"build {mint[..8]}: migrated={state.Migrated} v2={state.NeedsV2} vq={state.Curve.VirtualQuoteReserves} vt={state.Curve.VirtualTokenReserves} creator={state.Curve.Creator.Key[..8]} quote={state.QuoteMint.Key[..8]} baseTp={state.BaseTokenProgram.Key[..8]} pool={(state.Pool == null ? "none" : "yes")}");
 
         var g = await GlobalAsync();
         if (g == null)
-            return (false, "global not readable", null);
+            return (null, "global not readable");
 
         var builder = BaseBuilder(cuLimit, cuPrice);
 
         if (!state.Migrated)
         {
             var minQuote = await QuoteSellQuoteAsync(state, baseIn);
+        SdkLog.Trace($"sell quote {mint[..8]}: baseIn={baseIn} minQuote={minQuote} slippageBps={slippageBps}");
             minQuote = minQuote > minQuote * (ulong)slippageBps / 10000
                 ? minQuote - minQuote * (ulong)slippageBps / 10000
                 : 0;
@@ -123,12 +135,12 @@ public partial class PumpClient
         else
         {
             if (state.Pool == null)
-                return (false, "migrated but pool not found", null);
+                return (null, "migrated but pool not found");
 
             var reserves = await PoolReservesAsync(state.Pool);
             var cfg = await AmmConfigAsync();
             if (cfg == null)
-                return (false, "amm config not readable", null);
+                return (null, "amm config not readable");
 
             var quoteOut = Quotes.SellQuoteOnPool(reserves.Base, reserves.Quote, cfg, baseIn);
             var minOut = quoteOut > quoteOut * (ulong)slippageBps / 10000
@@ -141,7 +153,7 @@ public partial class PumpClient
             builder.AddInstruction(AmmInstructions.Sell(swap, baseIn, minOut));
         }
 
-        return await SendAsync(builder, $"sell {mint[..6]}");
+        return await SignAsync(builder);
     }
 
     // the program accepts any authorized recipient; official sdk picks a
@@ -214,3 +226,6 @@ public partial class PumpClient
         return await SendRawAsync(tx, what);
     }
 }
+
+
+
