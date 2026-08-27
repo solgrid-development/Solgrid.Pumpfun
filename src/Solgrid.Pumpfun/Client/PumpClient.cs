@@ -120,10 +120,15 @@ public partial class PumpClient
         if (!curve.Complete)
             return state;
 
-        // canonical pool derives directly; scan only as a last resort for
-        // non-canonical pools
-        var pool = await GetPoolAsync(Pda.CanonicalPool(mintKey, quoteMint))
-            ?? await FindPoolAsync(mintKey);
+        // canonical pool derives directly; try the quote variants migrations
+        // may have used, scan only as a last resort for non-canonical pools
+        AmmPool? pool = null;
+        foreach (var q in new[] { Addresses.NativeMint, new PublicKey("So111111111111111111111111111112"), quoteMint })
+        {
+            pool = await GetPoolAsync(Pda.CanonicalPool(mintKey, q));
+            if (pool != null) break;
+        }
+        pool ??= await FindPoolAsync(mintKey);
         return new CoinState
         {
             Mint = mintKey,
