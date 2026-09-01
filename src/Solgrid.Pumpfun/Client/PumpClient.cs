@@ -151,7 +151,8 @@ public partial class PumpClient
     public async Task<AmmPool?> FindPoolAsync(PublicKey baseMint)
     {
         var filters = new List<MemCmp> { new() { Offset = 43, Bytes = baseMint.Key } };
-        var res = await _rpc.GetProgramAccountsAsync(Addresses.PumpAmm.Key, Commitment.Confirmed, 178, filters);
+        // no dataSize filter: pool accounts grow with extend_account
+        var res = await _rpc.GetProgramAccountsAsync(Addresses.PumpAmm.Key, Commitment.Confirmed, null, filters);
         if (!res.WasSuccessful || res.Result == null)
             return null;
         foreach (var acc in res.Result)
