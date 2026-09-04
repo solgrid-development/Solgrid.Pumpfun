@@ -1,17 +1,12 @@
 # Solgrid.Pumpfun
 
-C# SDK for pump.fun on Solana. Bonding-curve instructions (v1 and v2),
+C# SDK for [pump.fun](https://pump.fun/) on Solana. Bonding-curve instructions (v1 and v2),
 PumpSwap swap instructions, account types, event decoders, curve and pool
 math, plus a client that routes a trade to wherever the coin currently
 lives. Built from the official IDLs in pump-fun/pump-public-docs.
 
-Solnet.Pumpfun is dead and predates creator fees, usdc-paired coins and
+[Solnet.Pumpfun](https://github.com/Bifrost-Technologies/Solnet.Pumpfun/) is dead and predates creator fees, usdc-paired coins and
 PumpSwap. This is the current program, in C#.
-
-## Install
-
-    dotnet add package Solgrid.Pumpfun   # once published
-    # or reference the project, net8.0
 
 ## Trade a coin
 
@@ -58,12 +53,3 @@ reserves).
   `Pool.virtual_quote_reserves` (effective reserves, per the docs)
 - keys never leave your process; signing is local, sending goes through
   whatever rpc you passed in
-
-## Build & test
-
-    dotnet build src/Solgrid.Pumpfun.sln
-    dotnet test src/Solgrid.Pumpfun.sln
-
-## License
-
-MIT
