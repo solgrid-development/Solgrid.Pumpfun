@@ -53,3 +53,12 @@ reserves).
   `Pool.virtual_quote_reserves` (effective reserves, per the docs)
 - keys never leave your process; signing is local, sending goes through
   whatever rpc you passed in
+
+## Known issues
+
+- TradeStream subscribes to the pump program only: you get curve trades and
+  migrations, but not PumpSwap fills. The AmmSwapEvent decoder is there, the
+  second subscription is not wired yet
+- alchemy ws confirmed subscriptions but never delivered notifications for me
+  on two different keys; a public wss endpoint worked for the same window.
+  test your ws provider before blaming the sdk
