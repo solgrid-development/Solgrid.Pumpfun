@@ -112,7 +112,7 @@ public partial class PumpClient
         if (!state.Migrated)
         {
             var minQuote = await QuoteSellQuoteAsync(state, baseIn);
-        SdkLog.Trace($"sell quote {mint[..8]}: baseIn={baseIn} minQuote={minQuote} slippageBps={slippageBps}");
+            SdkLog.Trace($"sell quote {mint[..8]}: baseIn={baseIn} minQuote={minQuote} slippageBps={slippageBps}");
             minQuote = minQuote > minQuote * (ulong)slippageBps / 10000
                 ? minQuote - minQuote * (ulong)slippageBps / 10000
                 : 0;
@@ -198,8 +198,8 @@ public partial class PumpClient
         try
         {
             var tx = builder.SetRecentBlockHash(bh.Result.Value.Blockhash).Build(Trader!);
-        SdkLog.Trace($"signed tx len={tx.Length} feePayer={Trader.PublicKey.Key[..8]}");
-        return (tx, null);
+            SdkLog.Trace($"signed tx len={tx.Length} feePayer={Trader!.PublicKey.Key[..8]}");
+            return (tx, null);
         }
         catch (Exception ex)
         {
