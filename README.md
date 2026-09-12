@@ -8,6 +8,15 @@ lives. Built from the official IDLs in pump-fun/pump-public-docs.
 [Solnet.Pumpfun](https://github.com/Bifrost-Technologies/Solnet.Pumpfun/) is dead and predates creator fees, usdc-paired coins and
 PumpSwap. This is the current program, in C#.
 
+## Built with Solgrid.Pumpfun
+
+Some projects built with this SDK:
+
+- [PumpCopy](https://github.com/harutocodes/pumpfun-copytrade) - copytrade bot
+  for SLP tokens on PumpFun and PumpSwap (.NET8, pre-compiled)
+
+![PumpCopy](https://raw.githubusercontent.com/harutocodes/pumpfun-copytrade/main/docs/screen-main.png)
+
 ## Trade a coin
 
 ```csharp
